@@ -1,80 +1,112 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import {
-  ArrowRight,
-  Check,
-  ShieldCheck,
-  UserRound,
-} from "lucide-react";
+import { FormEvent, useEffect, useState } from "react";
 
-const niches = [
-  "Fashion",
-  "Fitness",
-  "Beauty",
-  "Food",
-  "Travel",
-  "Technology",
-  "Gaming",
-  "Education",
-  "Lifestyle",
-  "Finance",
-  "Photography",
-  "Other",
-];
+type FormData = {
+  fullName: string;
+  email: string;
+  phone: string;
+  city: string;
+  country: string;
+  niche: string;
+  instagramUsername: string;
+  bio: string;
+};
+
+type Creator = {
+  id: number;
+  name: string;
+  email: string;
+  instagram_username: string;
+  status: string;
+  created_at: string;
+};
 
 export default function CreatorRegistration() {
   const [step, setStep] = useState(1);
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [creatorId, setCreatorId] = useState<number | null>(null);
+  const [creator, setCreator] = useState<Creator | null>(null);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     fullName: "",
     email: "",
     phone: "",
     city: "",
-    country: "",
-    niche: "",
+    country: "India",
+    niche: "Technology",
     instagramUsername: "",
     bio: "",
   });
 
-  const updateField = (field: string, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
+  const [loading, setLoading] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const [error, setError] = useState("");
+  const [metaSuccess, setMetaSuccess] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const meta = params.get("meta");
+    const returnedCreatorId = params.get("creatorId");
+
+    if (returnedCreatorId) {
+      setCreatorId(Number(returnedCreatorId));
+    }
+
+    if (meta === "success") {
+      setMetaSuccess(true);
+      setStep(3);
+
+      window.history.replaceState(
+        {},
+        document.title,
+        window.location.pathname
+      );
+    }
+
+    if (meta === "error") {
+      const message =
+        params.get("message") || "Instagram connection failed.";
+
+      setError(message);
+      setStep(2);
+
+      window.history.replaceState(
+        {},
+        document.title,
+        window.location.pathname
+      );
+    }
+  }, []);
+
+  const updateField = (
+    field: keyof FormData,
+    value: string
+  ) => {
+    setFormData((previous) => ({
+      ...previous,
       [field]: value,
     }));
   };
 
-  const handleStepOne = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleRegistration = async (
+    event: FormEvent<HTMLFormElement>
+  ) => {
+    event.preventDefault();
 
     setError("");
-
-    if (
-      !formData.fullName ||
-      !formData.email ||
-      !formData.phone ||
-      !formData.city ||
-      !formData.country ||
-      !formData.niche ||
-      !formData.instagramUsername
-    ) {
-      setError("Please fill in all required fields.");
-      return;
-    }
+    setLoading(true);
 
     try {
-      setLoading(true);
-
-      const response = await fetch("/api/creators/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
+      const response = await fetch(
+        "/api/creators/register",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        }
+      );
 
       const data = await response.json();
 
@@ -84,14 +116,16 @@ export default function CreatorRegistration() {
         );
       }
 
+      const registeredCreator = data.creator as Creator;
+
+      setCreator(registeredCreator);
+      setCreatorId(registeredCreator.id);
       setStep(2);
     } catch (err) {
-      console.error("Registration error:", err);
-
       setError(
         err instanceof Error
           ? err.message
-          : "Something went wrong. Please try again."
+          : "Failed to register creator."
       );
     } finally {
       setLoading(false);
@@ -99,462 +133,521 @@ export default function CreatorRegistration() {
   };
 
   const handleInstagramConnect = () => {
-    /*
-      Meta OAuth will be connected here next.
+    if (!creatorId) {
+      setError(
+        "Creator registration is incomplete. Please go back and register again."
+      );
+      return;
+    }
 
-      For now, this is only a temporary success screen.
-    */
-    setSubmitted(true);
+    setError("");
+    setConnecting(true);
+
+    window.location.href =
+      `/api/auth/meta?creatorId=${encodeURIComponent(
+        creatorId
+      )}`;
   };
 
-  if (submitted) {
-    return (
-      <main className="registration-page">
-        <section className="success-card">
-          <div className="success-icon">
-            <Check size={34} />
-          </div>
+  const handleBack = () => {
+    setError("");
+    setStep(1);
+  };
 
-          <h1>Registration Complete</h1>
+  const handleNewRegistration = () => {
+    setFormData({
+      fullName: "",
+      email: "",
+      phone: "",
+      city: "",
+      country: "India",
+      niche: "Technology",
+      instagramUsername: "",
+      bio: "",
+    });
 
-          <p>
-            Thank you, {formData.fullName}. Your creator registration
-            has been submitted successfully.
-          </p>
-
-          <div className="success-details">
-            <div>
-              <span>Instagram</span>
-              <strong>
-                @{formData.instagramUsername}
-              </strong>
-            </div>
-
-            <div>
-              <span>Niche</span>
-              <strong>{formData.niche}</strong>
-            </div>
-
-            <div>
-              <span>Location</span>
-              <strong>
-                {formData.city}, {formData.country}
-              </strong>
-            </div>
-          </div>
-
-          <button
-            className="secondary-button"
-            onClick={() => {
-              setSubmitted(false);
-              setStep(1);
-              setError("");
-            }}
-          >
-            Register another creator
-          </button>
-        </section>
-      </main>
-    );
-  }
+    setCreator(null);
+    setCreatorId(null);
+    setMetaSuccess(false);
+    setError("");
+    setStep(1);
+  };
 
   return (
     <main className="registration-page">
-      <div className="registration-container">
-        {/* LEFT PANEL */}
-        <section className="hero-panel">
+      <section className="registration-container">
+        <div className="hero-panel">
           <div className="hero-content">
-            <div className="brand">
-              <div className="brand-mark">
-                <span>IA</span>
-              </div>
-
-              <span>Influencer Analytics</span>
+            <div className="brand-badge">
+              INFLUENCER ANALYTICS
             </div>
 
-            <div className="hero-text">
-              <p className="eyebrow">
-                CREATOR REGISTRATION
-              </p>
+            <h1>
+              Turn your Instagram
+              <br />
+              presence into insights.
+            </h1>
 
-              <h1>
-                Grow your influence
-                <br />
-                with better data.
-              </h1>
+            <p>
+              Register your creator profile and connect
+              your Instagram Professional account to start
+              tracking performance.
+            </p>
 
-              <p className="hero-description">
-                Join our creator analytics platform and get your
-                Instagram performance tracked with meaningful
-                insights.
-              </p>
-            </div>
-
-            <div className="benefits">
-              <div className="benefit">
-                <div className="benefit-icon">
-                  <ShieldCheck size={20} />
-                </div>
-
-                <div>
-                  <strong>Secure connection</strong>
-                  <p>
-                    Your account connection is handled securely.
-                  </p>
-                </div>
+            <div className="hero-points">
+              <div className="hero-point">
+                <span>✓</span>
+                Daily follower tracking
               </div>
 
-              <div className="benefit">
-                <div className="benefit-icon">
-                  <UserRound size={20} />
-                </div>
+              <div className="hero-point">
+                <span>✓</span>
+                Instagram performance analytics
+              </div>
 
-                <div>
-                  <strong>Creator analytics</strong>
-                  <p>
-                    Track your audience and growth over time.
-                  </p>
-                </div>
+              <div className="hero-point">
+                <span>✓</span>
+                Growth insights
+              </div>
+
+              <div className="hero-point">
+                <span>✓</span>
+                AI-powered analysis
               </div>
             </div>
           </div>
+        </div>
 
-          <div className="hero-footer">
-            <span>Creator Analytics Platform</span>
-            <span>© 2026</span>
-          </div>
-        </section>
+        <div className="form-panel">
+          <div className="form-card">
+            {step !== 3 && (
+              <div className="progress-section">
+                <div className="progress-header">
+                  <span>
+                    Step {step} of 2
+                  </span>
 
-        {/* FORM PANEL */}
-        <section className="form-panel">
-          <div className="form-wrapper">
-            {/* STEP INDICATOR */}
-            <div className="steps">
-              <div
-                className={`step ${
-                  step >= 1 ? "active" : ""
-                }`}
-              >
-                <div className="step-number">
-                  {step > 1 ? (
-                    <Check size={15} />
-                  ) : (
-                    "1"
-                  )}
+                  <span>
+                    {step === 1
+                      ? "Basic information"
+                      : "Instagram connection"}
+                  </span>
                 </div>
 
-                <span>Basic information</span>
+                <div className="progress-bar">
+                  <div
+                    className="progress-fill"
+                    style={{
+                      width:
+                        step === 1 ? "50%" : "100%",
+                    }}
+                  />
+                </div>
               </div>
+            )}
 
-              <div className="step-line" />
-
-              <div
-                className={`step ${
-                  step >= 2 ? "active" : ""
-                }`}
-              >
-                <div className="step-number">2</div>
-
-                <span>Connect Instagram</span>
+            {error && (
+              <div className="error-message">
+                <strong>Something went wrong</strong>
+                <span>{error}</span>
               </div>
-            </div>
+            )}
 
-            {/* STEP 1 */}
             {step === 1 && (
               <>
                 <div className="form-heading">
-                  <h2>Tell us about yourself</h2>
+                  <span className="step-label">
+                    STEP 1
+                  </span>
+
+                  <h2>Creator information</h2>
 
                   <p>
-                    Enter your details to create your creator
-                    profile.
+                    Tell us a little about yourself and
+                    your Instagram profile.
                   </p>
                 </div>
 
-                <form onSubmit={handleStepOne}>
+                <form
+                  onSubmit={handleRegistration}
+                  className="registration-form"
+                >
                   <div className="form-grid">
-                    <div className="field full">
+                    <div className="form-field">
                       <label htmlFor="fullName">
                         Full Name
+                        <span>*</span>
                       </label>
 
                       <input
                         id="fullName"
                         type="text"
-                        placeholder="Enter your full name"
                         value={formData.fullName}
-                        onChange={(e) =>
+                        onChange={(event) =>
                           updateField(
                             "fullName",
-                            e.target.value
+                            event.target.value
                           )
                         }
+                        placeholder="Enter your full name"
                         required
                       />
                     </div>
 
-                    <div className="field">
+                    <div className="form-field">
                       <label htmlFor="email">
                         Email
+                        <span>*</span>
                       </label>
 
                       <input
                         id="email"
                         type="email"
-                        placeholder="you@example.com"
                         value={formData.email}
-                        onChange={(e) =>
+                        onChange={(event) =>
                           updateField(
                             "email",
-                            e.target.value
+                            event.target.value
                           )
                         }
+                        placeholder="you@example.com"
                         required
                       />
                     </div>
 
-                    <div className="field">
+                    <div className="form-field">
                       <label htmlFor="phone">
                         Phone
+                        <span>*</span>
                       </label>
 
                       <input
                         id="phone"
                         type="tel"
-                        placeholder="+91 9876543210"
                         value={formData.phone}
-                        onChange={(e) =>
+                        onChange={(event) =>
                           updateField(
                             "phone",
-                            e.target.value
+                            event.target.value
                           )
                         }
+                        placeholder="+91 XXXXX XXXXX"
                         required
                       />
                     </div>
 
-                    <div className="field">
+                    <div className="form-field">
                       <label htmlFor="city">
                         City
+                        <span>*</span>
                       </label>
 
                       <input
                         id="city"
                         type="text"
-                        placeholder="Hyderabad"
                         value={formData.city}
-                        onChange={(e) =>
+                        onChange={(event) =>
                           updateField(
                             "city",
-                            e.target.value
+                            event.target.value
                           )
                         }
+                        placeholder="Hyderabad"
                         required
                       />
                     </div>
 
-                    <div className="field">
+                    <div className="form-field">
                       <label htmlFor="country">
                         Country
+                        <span>*</span>
                       </label>
 
                       <input
                         id="country"
                         type="text"
-                        placeholder="India"
                         value={formData.country}
-                        onChange={(e) =>
+                        onChange={(event) =>
                           updateField(
                             "country",
-                            e.target.value
+                            event.target.value
                           )
                         }
+                        placeholder="India"
                         required
                       />
                     </div>
 
-                    <div className="field">
+                    <div className="form-field">
                       <label htmlFor="niche">
-                        Content Niche
+                        Primary Niche
+                        <span>*</span>
                       </label>
 
                       <select
                         id="niche"
                         value={formData.niche}
-                        onChange={(e) =>
+                        onChange={(event) =>
                           updateField(
                             "niche",
-                            e.target.value
+                            event.target.value
                           )
                         }
                         required
                       >
-                        <option value="">
-                          Select your niche
+                        <option value="Fashion">
+                          Fashion
                         </option>
-
-                        {niches.map((niche) => (
-                          <option
-                            key={niche}
-                            value={niche}
-                          >
-                            {niche}
-                          </option>
-                        ))}
+                        <option value="Fitness">
+                          Fitness
+                        </option>
+                        <option value="Beauty">
+                          Beauty
+                        </option>
+                        <option value="Food">
+                          Food
+                        </option>
+                        <option value="Travel">
+                          Travel
+                        </option>
+                        <option value="Technology">
+                          Technology
+                        </option>
+                        <option value="Gaming">
+                          Gaming
+                        </option>
+                        <option value="Education">
+                          Education
+                        </option>
+                        <option value="Lifestyle">
+                          Lifestyle
+                        </option>
+                        <option value="Other">
+                          Other
+                        </option>
                       </select>
                     </div>
 
-                    <div className="field">
+                    <div className="form-field full-width">
                       <label htmlFor="instagramUsername">
                         Instagram Username
+                        <span>*</span>
                       </label>
 
-                      <div className="input-with-prefix">
+                      <div className="input-prefix">
                         <span>@</span>
 
                         <input
                           id="instagramUsername"
                           type="text"
-                          placeholder="yourusername"
                           value={
                             formData.instagramUsername
                           }
-                          onChange={(e) =>
+                          onChange={(event) =>
                             updateField(
                               "instagramUsername",
-                              e.target.value.replace(
-                                "@",
+                              event.target.value.replace(
+                                /^@/,
                                 ""
                               )
                             )
                           }
+                          placeholder="your_username"
                           required
                         />
                       </div>
+
+                      <small>
+                        Enter your Instagram Professional
+                        account username.
+                      </small>
                     </div>
 
-                    <div className="field full">
+                    <div className="form-field full-width">
                       <label htmlFor="bio">
-                        Short Bio{" "}
-                        <span>(Optional)</span>
+                        Short Bio
                       </label>
 
                       <textarea
                         id="bio"
-                        placeholder="Tell us a little about your content..."
-                        rows={4}
                         value={formData.bio}
-                        onChange={(e) =>
+                        onChange={(event) =>
                           updateField(
                             "bio",
-                            e.target.value
+                            event.target.value
                           )
                         }
+                        placeholder="Tell us about your content..."
+                        rows={4}
                       />
                     </div>
                   </div>
 
-                  {error && (
-                    <div className="error-message">
-                      {error}
-                    </div>
-                  )}
-
                   <button
-                    className="primary-button"
                     type="submit"
+                    className="primary-button"
                     disabled={loading}
                   >
-                    {loading ? (
-                      "Saving..."
-                    ) : (
-                      <>
-                        Continue
-                        <ArrowRight size={18} />
-                      </>
-                    )}
+                    {loading
+                      ? "Registering..."
+                      : "Continue to Instagram →"}
                   </button>
                 </form>
               </>
             )}
 
-            {/* STEP 2 */}
             {step === 2 && (
               <>
                 <div className="form-heading">
-                  <h2>Connect your Instagram</h2>
+                  <span className="step-label">
+                    STEP 2
+                  </span>
+
+                  <h2>Connect Instagram</h2>
 
                   <p>
-                    Connect your professional Instagram
-                    account to allow analytics tracking.
+                    Connect your Instagram Professional
+                    account through Meta to enable
+                    analytics.
                   </p>
                 </div>
 
-                <div className="instagram-card">
-                  <div className="instagram-logo">
-                    <span>IG</span>
+                {creator && (
+                  <div className="creator-summary">
+                    <div className="creator-avatar">
+                      {creator.name
+                        .charAt(0)
+                        .toUpperCase()}
+                    </div>
+
+                    <div>
+                      <strong>{creator.name}</strong>
+
+                      <span>
+                        @{creator.instagram_username}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="instagram-connect-card">
+                  <div className="instagram-icon">
+                    ◎
                   </div>
 
-                  <div className="instagram-info">
-                    <strong>
-                      @{formData.instagramUsername}
-                    </strong>
-
-                    <span>
-                      Instagram Professional Account
-                    </span>
-                  </div>
-                </div>
-
-                <div className="security-box">
-                  <ShieldCheck size={22} />
-
-                  <div>
-                    <strong>
-                      Your data is protected
-                    </strong>
+                  <div className="connect-content">
+                    <h3>
+                      Connect with Instagram
+                    </h3>
 
                     <p>
-                      Your Instagram account will be
-                      connected securely. We only request
-                      the permissions required for
-                      analytics.
+                      You will be redirected to Meta to
+                      securely authorize access to your
+                      Instagram Professional account.
                     </p>
+
+                    <div className="connect-features">
+                      <span>✓ Profile data</span>
+                      <span>✓ Follower insights</span>
+                      <span>✓ Performance data</span>
+                    </div>
                   </div>
                 </div>
 
                 <button
-                  className="primary-button"
                   type="button"
+                  className="primary-button instagram-button"
                   onClick={handleInstagramConnect}
+                  disabled={
+                    connecting || !creatorId
+                  }
                 >
-                  Connect Instagram
-                  <ArrowRight size={18} />
+                  {connecting
+                    ? "Opening Meta..."
+                    : "Connect Instagram with Meta"}
                 </button>
 
                 <button
-                  className="back-button"
                   type="button"
-                  onClick={() => {
-                    setStep(1);
-                    setError("");
-                  }}
+                  className="secondary-button"
+                  onClick={handleBack}
+                  disabled={connecting}
                 >
-                  ← Back to information
+                  ← Back to Basic Information
                 </button>
+
+                <p className="security-note">
+                  🔒 Your Meta credentials are handled
+                  securely by Meta. We never ask for your
+                  Instagram password.
+                </p>
               </>
             )}
 
-            <div className="form-footer">
-              <ShieldCheck size={15} />
+            {step === 3 && metaSuccess && (
+              <>
+                <div className="success-card">
+                  <div className="success-icon">
+                    ✓
+                  </div>
 
-              <span>
-                Your information is kept secure and private.
-              </span>
-            </div>
+                  <span className="step-label">
+                    REGISTRATION COMPLETE
+                  </span>
+
+                  <h2>
+                    Instagram connected successfully!
+                  </h2>
+
+                  <p>
+                    Your creator profile has been
+                    registered and your Instagram account
+                    is now connected to the analytics
+                    platform.
+                  </p>
+
+                  <div className="success-details">
+                    <div>
+                      <span>Creator</span>
+                      <strong>
+                        {creator?.name ||
+                          formData.fullName}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>Instagram</span>
+                      <strong>
+                        @{formData.instagramUsername}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>Status</span>
+                      <strong className="status-active">
+                        Connected
+                      </strong>
+                    </div>
+                  </div>
+
+                  <div className="success-message">
+                    Your Instagram data can now be
+                    tracked through the analytics system.
+                  </div>
+
+                  <button
+                    type="button"
+                    className="primary-button"
+                    onClick={handleNewRegistration}
+                  >
+                    Register Another Creator
+                  </button>
+                </div>
+              </>
+            )}
           </div>
-        </section>
-      </div>
+        </div>
+      </section>
     </main>
   );
 }
