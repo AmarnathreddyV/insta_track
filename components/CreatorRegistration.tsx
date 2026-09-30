@@ -65,7 +65,8 @@ export default function CreatorRegistration() {
 
     if (meta === "error") {
       const message =
-        params.get("message") || "Instagram connection failed.";
+        params.get("message") ||
+        "Instagram connection failed.";
 
       setError(message);
       setStep(2);
@@ -112,11 +113,13 @@ export default function CreatorRegistration() {
 
       if (!response.ok || !data.success) {
         throw new Error(
-          data.message || "Failed to register creator."
+          data.message ||
+            "Failed to register creator."
         );
       }
 
-      const registeredCreator = data.creator as Creator;
+      const registeredCreator =
+        data.creator as Creator;
 
       setCreator(registeredCreator);
       setCreatorId(registeredCreator.id);

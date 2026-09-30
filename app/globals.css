@@ -62,8 +62,6 @@ button {
     0 8px 24px rgba(15, 23, 42, 0.06);
 }
 
-/* LEFT PANEL */
-
 .hero-panel {
   position: relative;
   overflow: hidden;
@@ -163,8 +161,6 @@ button {
   font-weight: 800;
 }
 
-/* RIGHT PANEL */
-
 .form-panel {
   padding: 54px 58px;
   background: #ffffff;
@@ -175,8 +171,6 @@ button {
   max-width: 800px;
   margin: 0 auto;
 }
-
-/* PROGRESS */
 
 .progress-section {
   margin-bottom: 38px;
@@ -203,15 +197,9 @@ button {
 .progress-fill {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(
-    90deg,
-    #4f46e5,
-    #7c3aed
-  );
+  background: linear-gradient(90deg, #4f46e5, #7c3aed);
   transition: width 0.3s ease;
 }
-
-/* HEADINGS */
 
 .form-heading {
   margin-bottom: 32px;
@@ -241,8 +229,6 @@ button {
   line-height: 1.55;
 }
 
-/* ERROR */
-
 .error-message {
   display: flex;
   flex-direction: column;
@@ -263,8 +249,6 @@ button {
 .error-message span {
   line-height: 1.45;
 }
-
-/* FORM */
 
 .registration-form {
   width: 100%;
@@ -346,8 +330,6 @@ button {
   line-height: 1.4;
 }
 
-/* INSTAGRAM USERNAME */
-
 .input-prefix {
   display: flex;
   align-items: center;
@@ -385,19 +367,13 @@ button {
   border: 0;
 }
 
-/* BUTTONS */
-
 .primary-button {
   width: 100%;
   min-height: 54px;
   margin-top: 30px;
   border: 0;
   border-radius: 12px;
-  background: linear-gradient(
-    135deg,
-    #4f46e5,
-    #5b4ce6
-  );
+  background: linear-gradient(135deg, #4f46e5, #5b4ce6);
   color: #ffffff;
   font-size: 15px;
   font-weight: 750;
@@ -405,14 +381,12 @@ button {
     transform 0.2s ease,
     box-shadow 0.2s ease,
     opacity 0.2s ease;
-  box-shadow:
-    0 10px 22px rgba(79, 70, 229, 0.2);
+  box-shadow: 0 10px 22px rgba(79, 70, 229, 0.2);
 }
 
 .primary-button:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow:
-    0 14px 28px rgba(79, 70, 229, 0.28);
+  box-shadow: 0 14px 28px rgba(79, 70, 229, 0.28);
 }
 
 .primary-button:active:not(:disabled) {
@@ -449,8 +423,6 @@ button {
   opacity: 0.6;
 }
 
-/* CREATOR SUMMARY */
-
 .creator-summary {
   display: flex;
   align-items: center;
@@ -470,11 +442,7 @@ button {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: linear-gradient(
-    135deg,
-    #4f46e5,
-    #7c3aed
-  );
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
   color: #ffffff;
   font-size: 18px;
   font-weight: 800;
@@ -496,20 +464,17 @@ button {
   font-size: 13px;
 }
 
-/* INSTAGRAM CONNECTION */
-
 .instagram-connect-card {
   display: flex;
   gap: 18px;
   padding: 22px;
   border: 1px solid #e2e8f0;
   border-radius: 16px;
-  background:
-    linear-gradient(
-      135deg,
-      rgba(99, 102, 241, 0.06),
-      rgba(124, 58, 237, 0.04)
-    );
+  background: linear-gradient(
+    135deg,
+    rgba(99, 102, 241, 0.06),
+    rgba(124, 58, 237, 0.04)
+  );
 }
 
 .instagram-icon {
@@ -561,8 +526,6 @@ button {
   margin-top: 24px;
 }
 
-/* SECURITY NOTE */
-
 .security-note {
   margin-top: 17px;
   color: #94a3b8;
@@ -571,18 +534,11 @@ button {
   text-align: center;
 }
 
-/* SUCCESS */
-
 .success-card {
   padding: 30px;
   border: 1px solid #dbeafe;
   border-radius: 20px;
-  background:
-    linear-gradient(
-      145deg,
-      #ffffff,
-      #f8fbff
-    );
+  background: linear-gradient(145deg, #ffffff, #f8fbff);
   text-align: center;
 }
 
@@ -671,8 +627,6 @@ button {
 .success-card .primary-button {
   margin-top: 22px;
 }
-
-/* RESPONSIVE */
 
 @media (max-width: 1100px) {
   .registration-page {

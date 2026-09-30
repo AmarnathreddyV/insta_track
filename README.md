@@ -1,9 +1,28 @@
-# Influencer Analytics Backend Update
+# Influencer Analytics - Creator Registration
 
-Adds the server-side creator registration API.
+Next.js creator registration app with PostgreSQL and Meta/Instagram OAuth.
 
-Required Vercel environment variable: DATABASE_URL
+## Routes
 
-Do not commit a real DATABASE_URL to GitHub.
+- `/` - creator registration UI
+- `/api/creators/register` - creator registration API
+- `/api/auth/meta` - starts Meta OAuth
+- `/api/auth/meta/callback` - handles Meta OAuth callback
 
-API: POST /api/creators/register
+## Required environment variables
+
+See `.env.example`.
+
+Do not commit real Meta secrets or database credentials.
+
+## Production callback
+
+`https://insta-track-three.vercel.app/api/auth/meta/callback`
+
+## Database tables
+
+The app expects:
+
+- `influencers`
+- `social_accounts`
+- `follower_snapshots`
