@@ -1,4 +1,18 @@
-import type { Metadata } from "next";
 import "./globals.css";
-export const metadata: Metadata = { title: "Creator Registration", description: "Creator registration for Influencer Analytics" };
-export default function RootLayout({children}:{children:React.ReactNode}) { return <html lang="en"><body>{children}</body></html>; }
+
+export const metadata = {
+  title: "Influencer Analytics | Creator Registration",
+  description: "Register your creator profile and connect your Instagram account.",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
+}
