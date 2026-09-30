@@ -1,299 +1,68 @@
 import { NextResponse } from "next/server";
-import { Pool } from "pg";
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false,
-  },
-  max: 1,
-});
-
-const GRAPH_VERSION = process.env.META_GRAPH_VERSION || "v24.0";
-const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_VERSION}`;
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
+    const creatorId = searchParams.get("creatorId");
 
-    const code = searchParams.get("code");
-    const state = searchParams.get("state");
-    const metaError = searchParams.get("error");
-
-    if (metaError) {
-      return NextResponse.redirect(
-        new URL(
-          `/?meta=error&message=${encodeURIComponent(metaError)}`,
-          request.url
-        )
-      );
-    }
-
-    if (!code || !state) {
-      return NextResponse.redirect(
-        new URL(
-          "/?meta=error&message=Missing+Meta+authorization+data",
-          request.url
-        )
-      );
-    }
-
-    // Decode creator ID from OAuth state
-    let creatorId: string;
-
-    try {
-      const decodedState = JSON.parse(
-        Buffer.from(state, "base64url").toString("utf-8")
-      );
-
-      creatorId = decodedState.creatorId;
-
-      if (!creatorId) {
-        throw new Error("Creator ID missing from state");
-      }
-    } catch {
-      return NextResponse.redirect(
-        new URL(
-          "/?meta=error&message=Invalid+OAuth+state",
-          request.url
-        )
+    if (!creatorId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Creator ID is required.",
+        },
+        { status: 400 }
       );
     }
 
     const appId = process.env.META_APP_ID;
-    const appSecret = process.env.META_APP_SECRET;
+    const configId = process.env.META_CONFIG_ID;
     const redirectUri = process.env.META_REDIRECT_URI;
+    const graphVersion =
+      process.env.META_GRAPH_VERSION || "v24.0";
 
-    if (!appId || !appSecret || !redirectUri) {
-      throw new Error("Meta environment variables are missing");
+    if (!appId || !configId || !redirectUri) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Meta environment variables are missing.",
+        },
+        { status: 500 }
+      );
     }
 
-    // --------------------------------------------------
-    // 1. Exchange authorization code for access token
-    // --------------------------------------------------
+    const state = Buffer.from(
+      JSON.stringify({
+        creatorId,
+        timestamp: Date.now(),
+      })
+    ).toString("base64url");
 
-    const tokenParams = new URLSearchParams({
+    const params = new URLSearchParams({
       client_id: appId,
-      client_secret: appSecret,
       redirect_uri: redirectUri,
-      code,
+      config_id: configId,
+      response_type: "code",
+      override_default_response_type: "true",
+      state,
     });
 
-    const tokenResponse = await fetch(
-      `${GRAPH_BASE}/oauth/access_token?${tokenParams.toString()}`,
-      {
-        method: "GET",
-        cache: "no-store",
-      }
-    );
+    const authUrl =
+      `https://www.facebook.com/${graphVersion}/dialog/oauth?` +
+      params.toString();
 
-    const tokenData = await tokenResponse.json();
+    console.log("Starting Meta OAuth:", authUrl);
 
-    if (!tokenResponse.ok || !tokenData.access_token) {
-      console.error("Meta token exchange failed:", tokenData);
-      throw new Error("Failed to obtain Meta access token");
-    }
-
-    const accessToken = tokenData.access_token;
-
-    // --------------------------------------------------
-    // 2. Get Facebook Pages connected to the user
-    // --------------------------------------------------
-
-    const pagesParams = new URLSearchParams({
-      fields: "id,name,access_token,instagram_business_account",
-      access_token: accessToken,
-    });
-
-    const pagesResponse = await fetch(
-      `${GRAPH_BASE}/me/accounts?${pagesParams.toString()}`,
-      {
-        method: "GET",
-        cache: "no-store",
-      }
-    );
-
-    const pagesData = await pagesResponse.json();
-
-    if (!pagesResponse.ok) {
-      console.error("Meta pages request failed:", pagesData);
-      throw new Error("Unable to retrieve Facebook Pages");
-    }
-
-    const pages = pagesData.data || [];
-
-    // --------------------------------------------------
-    // 3. Find connected Instagram Professional account
-    // --------------------------------------------------
-
-    const pageWithInstagram = pages.find(
-      (page: any) => page.instagram_business_account?.id
-    );
-
-    if (!pageWithInstagram) {
-      throw new Error(
-        "No Instagram Professional account was found through the connected Facebook Page"
-      );
-    }
-
-    const instagramId =
-      pageWithInstagram.instagram_business_account.id;
-
-    const pageAccessToken =
-      pageWithInstagram.access_token || accessToken;
-
-    // --------------------------------------------------
-    // 4. Get Instagram profile information
-    // --------------------------------------------------
-
-    const profileParams = new URLSearchParams({
-      fields: "id,username,followers_count,follows_count,media_count",
-      access_token: pageAccessToken,
-    });
-
-    const profileResponse = await fetch(
-      `${GRAPH_BASE}/${instagramId}?${profileParams.toString()}`,
-      {
-        method: "GET",
-        cache: "no-store",
-      }
-    );
-
-    const profileData = await profileResponse.json();
-
-    if (!profileResponse.ok) {
-      console.error(
-        "Instagram profile request failed:",
-        profileData
-      );
-      throw new Error("Unable to retrieve Instagram profile");
-    }
-
-    const username = profileData.username || "";
-    const followers = Number(profileData.followers_count || 0);
-    const following = Number(profileData.follows_count || 0);
-    const mediaCount = Number(profileData.media_count || 0);
-
-    // --------------------------------------------------
-    // 5. Save Instagram account
-    // --------------------------------------------------
-
-    await pool.query(
-      `
-      INSERT INTO social_accounts (
-        influencer_id,
-        platform,
-        platform_user_id,
-        username,
-        account_type,
-        access_token_encrypted,
-        status,
-        connected_at,
-        last_synced
-      )
-      VALUES (
-        $1,
-        'instagram',
-        $2,
-        $3,
-        $4,
-        $5,
-        'active',
-        NOW(),
-        NOW()
-      )
-      ON CONFLICT (platform, platform_user_id)
-      DO UPDATE SET
-        influencer_id = EXCLUDED.influencer_id,
-        username = EXCLUDED.username,
-        account_type = EXCLUDED.account_type,
-        access_token_encrypted = EXCLUDED.access_token_encrypted,
-        status = 'active',
-        last_synced = NOW()
-      `,
-      [
-        Number(creatorId),
-        instagramId,
-        username,
-        "Instagram Professional",
-        pageAccessToken,
-      ]
-    );
-
-    // --------------------------------------------------
-    // 6. Activate creator
-    // --------------------------------------------------
-
-    await pool.query(
-      `
-      UPDATE influencers
-      SET
-        status = 'active',
-        instagram_username = $1
-      WHERE id = $2
-      `,
-      [username, Number(creatorId)]
-    );
-
-    // --------------------------------------------------
-    // 7. Save first follower snapshot
-    // --------------------------------------------------
-
-    await pool.query(
-      `
-      INSERT INTO follower_snapshots (
-        influencer_id,
-        snapshot_date,
-        followers,
-        following,
-        media_count
-      )
-      VALUES (
-        $1,
-        CURRENT_DATE,
-        $2,
-        $3,
-        $4
-      )
-      ON CONFLICT (influencer_id, snapshot_date)
-      DO UPDATE SET
-        followers = EXCLUDED.followers,
-        following = EXCLUDED.following,
-        media_count = EXCLUDED.media_count
-      `,
-      [
-        Number(creatorId),
-        followers,
-        following,
-        mediaCount,
-      ]
-    );
-
-    // --------------------------------------------------
-    // 8. Redirect back to registration page
-    // --------------------------------------------------
-
-    return NextResponse.redirect(
-      new URL(
-        `/?meta=success&creatorId=${encodeURIComponent(
-          creatorId
-        )}`,
-        request.url
-      )
-    );
+    return NextResponse.redirect(authUrl);
   } catch (error) {
-    console.error("Meta callback error:", error);
+    console.error("Meta OAuth start error:", error);
 
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Meta connection failed";
-
-    return NextResponse.redirect(
-      new URL(
-        `/?meta=error&message=${encodeURIComponent(message)}`,
-        request.url
-      )
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Unable to start Meta connection.",
+      },
+      { status: 500 }
     );
   }
 }
